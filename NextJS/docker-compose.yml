@@ -1,0 +1,60 @@
+version: "3.9"
+
+services:
+  # --- Base de datos PostgreSQL ---
+  db:
+    image: postgres:15
+    container_name: user-db
+    restart: always
+    environment:
+      POSTGRES_DB: userdb
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+
+  # --- pgAdmin (UI para PostgreSQL) ---
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: user-pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
+
+  # --- Backend: Spring Boot GraphQL ---
+  backend:
+    build:
+      context: ../Java
+      dockerfile: Dockerfile
+    container_name: user-app
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/userdb
+      SPRING_DATASOURCE_USERNAME: user
+      SPRING_DATASOURCE_PASSWORD: password
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+
+  # --- Frontend: Next.js ---
+  frontend:
+    build:
+      context: ../NextJS
+      dockerfile: Dockerfile
+    container_name: user-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_GRAPHQL_URL: http://backend:8080/graphql
+    depends_on:
+      - backend
+
+volumes:
+  db-data:
